@@ -88,7 +88,7 @@
           "parameters": [
             {
               "name": "take",
-              "value": "200"
+              "value": "100"
             }
           ]
         },
@@ -125,7 +125,7 @@
           "parameters": [
             {
               "name": "take",
-              "value": "200"
+              "value": "100"
             }
           ]
         },

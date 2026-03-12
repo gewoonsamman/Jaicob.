@@ -51,7 +51,7 @@
           "parameters": [
             {
               "name": "take",
-              "value": "200"
+              "value": "100"
             },
             {
               "name": "page",
