@@ -1,0 +1,122 @@
+{
+  "name": "Top Match — Stale Candidates Monitor",
+  "nodes": [
+    {
+      "id": "schedule_1",
+      "name": "Every Weekday at 9AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1-5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "http_candidates",
+      "name": "Fetch All Candidates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.jaicob.ai/candidates/public",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
+            { "name": "x-language", "value": "nl" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "take", "value": "200" },
+            { "name": "page", "value": "1" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "code_stale",
+      "name": "Find Stale Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 300],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const candidates = $json.data || [];\nconst STALE_DAYS = 7;\nconst now = new Date();\nconst cutoff = new Date(now.getTime() - STALE_DAYS * 24 * 60 * 60 * 1000);\n\nconst stale = [];\nfor (const c of candidates) {\n  const updated = c.updatedAt ? new Date(c.updatedAt) : new Date(0);\n  if (updated < cutoff) {\n    const details = c.applicantDetails || {};\n    const name = `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'Onbekend';\n    const daysSince = Math.floor((now - updated) / (24 * 60 * 60 * 1000));\n    stale.push({\n      id: c.id,\n      name,\n      function: c.function || '',\n      status: c.status || 'onbekend',\n      days_stale: daysSince,\n      last_updated: c.updatedAt || 'nooit'\n    });\n  }\n}\n\nstale.sort((a, b) => b.days_stale - a.days_stale);\n\nif (stale.length === 0) {\n  return [{json: {has_stale: false, message: 'Alle kandidaten zijn up-to-date!', count: 0}}];\n}\n\nlet alert = '⚠️ *Top Match — Vergeten Kandidaten Alert*\\n';\nalert += `📅 ${now.toLocaleDateString('nl-NL')}\\n${'='.repeat(40)}\\n\\n`;\n\nfor (const c of stale.slice(0, 30)) {\n  alert += `🔴 *${c.name}* — ${c.function || 'geen functie'}\\n`;\n  alert += `   ${c.days_stale} dagen niet bijgewerkt | Status: ${c.status}\\n\\n`;\n}\n\nalert += `\\n📊 Totaal: ${stale.length} kandidaten hebben aandacht nodig.`;\n\nreturn [{json: {has_stale: true, alert, stale_candidates: stale, count: stale.length}}];"
+      }
+    },
+    {
+      "id": "if_stale",
+      "name": "Stale Candidates Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1050, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "check_stale",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true },
+              "leftValue": "={{ $json.has_stale }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "slack_alert",
+      "name": "Send Alert to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1300, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#recruitment",
+        "text": "={{ $json.alert }}",
+        "otherOptions": {}
+      }
+    }
+  ],
+  "connections": {
+    "Every Weekday at 9AM": {
+      "main": [[{ "node": "Fetch All Candidates", "type": "main", "index": 0 }]]
+    },
+    "Fetch All Candidates": {
+      "main": [[{ "node": "Find Stale Candidates", "type": "main", "index": 0 }]]
+    },
+    "Find Stale Candidates": {
+      "main": [[{ "node": "Stale Candidates Found?", "type": "main", "index": 0 }]]
+    },
+    "Stale Candidates Found?": {
+      "main": [
+        [{ "node": "Send Alert to Slack", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Amsterdam",
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all"
+  }
+}

@@ -65,6 +65,59 @@ with JaicobClient() as jaicob:
     matches = find_matches(jaicob=jaicob)
 ```
 
+## n8n Workflows
+
+Alle 6 automations zijn ook beschikbaar als kant-en-klare n8n workflows die je direct kunt importeren.
+
+### Overzicht
+
+| # | Workflow | Trigger | Slack kanaal |
+|---|----------|---------|-------------|
+| 1 | **CV Parsing Pipeline** | Webhook (`POST /topmatch-cv-upload`) | `#recruitment` |
+| 2 | **Nightly Matching** | Schedule (ma-vr 06:00) | `#recruitment` |
+| 3 | **Vacancy from Brief** | Webhook (`POST /topmatch-vacancy-brief`) | `#recruitment` |
+| 4 | **Lead Enrichment** | Webhook (`POST /topmatch-enrich-lead`) | `#recruitment` |
+| 5 | **Weekly Client Reports** | Schedule (ma 08:00) | `#management` |
+| 6 | **Stale Candidates Monitor** | Schedule (ma-vr 09:00) | `#recruitment` |
+
+### n8n Installatie
+
+1. **Importeer workflows** — Ga naar n8n > Workflows > Import from File, selecteer de JSON uit `n8n-workflows/`
+2. **Environment variables** — Stel in n8n in:
+   - `JAICOB_API_KEY` — Je Jaicob API key
+   - `ANTHROPIC_API_KEY` — Je Anthropic API key
+3. **Slack credentials** — Koppel je Slack workspace in n8n
+4. **Activeer** — Zet de workflows op actief
+
+### Webhook endpoints gebruiken
+
+```bash
+# 1. CV uploaden en matchen
+curl -X POST https://jouw-n8n.com/webhook/topmatch-cv-upload \
+  -F "resume=@cv.pdf"
+
+# 3. Vacature aanmaken vanuit een briefje
+curl -X POST https://jouw-n8n.com/webhook/topmatch-vacancy-brief \
+  -H "Content-Type: application/json" \
+  -d '{"brief": "Sales manager B2B, 3+ jaar ervaring, regio Utrecht, fulltime"}'
+
+# 4. Lead verrijken
+curl -X POST https://jouw-n8n.com/webhook/topmatch-enrich-lead \
+  -H "Content-Type: application/json" \
+  -d '{"lead_id": "uuid-van-de-lead"}'
+```
+
+### Workflow architectuur
+
+Elke workflow volgt hetzelfde patroon:
+
+```
+Trigger → Jaicob API (data ophalen) → Code (prompt bouwen) → Claude AI → Code (response parsen) → Actie (Slack/Jaicob)
+```
+
+- **Webhook workflows** (1, 3, 4): Worden getriggerd door een HTTP POST en geven een JSON response terug
+- **Schedule workflows** (2, 5, 6): Draaien automatisch op vaste tijden en sturen Slack-notificaties
+
 ## Architectuur
 
 ```
@@ -78,6 +131,14 @@ topmatch/
 ├── reporting.py         # Klantrapportages
 ├── status_monitor.py    # Vergeten kandidaten alert
 └── cli.py               # CLI entry point
+
+n8n-workflows/
+├── 1-cv-parsing-pipeline.json
+├── 2-nightly-matching.json
+├── 3-vacancy-from-brief.json
+├── 4-lead-enrichment.json
+├── 5-weekly-client-reports.json
+└── 6-stale-candidates-monitor.json
 ```
 
 ## API Keys

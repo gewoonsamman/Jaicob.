@@ -1,0 +1,164 @@
+{
+  "name": "Top Match — Lead Enrichment & Outreach",
+  "nodes": [
+    {
+      "id": "webhook_1",
+      "name": "Lead Enrichment Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 350],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "topmatch-enrich-lead",
+        "options": {}
+      }
+    },
+    {
+      "id": "http_lead",
+      "name": "Fetch Lead from Jaicob",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 250],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.jaicob.ai/leads/public/{{ $json.body?.lead_id || $json.lead_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
+            { "name": "x-language", "value": "nl" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http_clients",
+      "name": "Fetch All Clients",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 450],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.jaicob.ai/clients/public",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
+            { "name": "x-language", "value": "nl" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "take", "value": "100" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "code_outreach",
+      "name": "Build Outreach Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 350],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const lead = $('Fetch Lead from Jaicob').first().json;\nconst clients = ($('Fetch All Clients').first().json.data || []);\n\nconst details = lead.applicantDetails || {};\nconst name = `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'Onbekend';\nconst skills = (lead.skills || []).map(s => s.name).join(', ');\nconst experiences = (lead.workExperiences || []).slice(0, 5);\nconst expSummary = experiences.map(e => `${e.position || ''} bij ${e.company || ''}`).join('; ');\nconst educations = (lead.educations || []).slice(0, 3);\nconst eduSummary = educations.map(e => `${e.degree || ''} — ${e.organization || ''}`).join('; ');\n\nconst clientLines = clients.slice(0, 20).map(c => \n  `- ${c.id}: ${c.companyName || ''} (${(c.details?.description || '').substring(0, 100)})`\n).join('\\n');\n\nconst prompt = `Je bent een recruiter bij Top Match, een persoonlijk en professioneel recruitmentbureau in Nederland.\n\nSchrijf een kort, persoonlijk berichtje (3-5 zinnen) in het Nederlands om contact op te nemen met deze lead. Het doel is om hun interesse te wekken zonder te pushy te zijn.\n\n**Lead profiel:**\nNaam: ${name}\nHuidige functie: ${lead.function || 'niet opgegeven'}\nVaardigheden: ${skills || 'niet opgegeven'}\nWerkervaring: ${expSummary || 'niet opgegeven'}\nOpleiding: ${eduSummary || 'niet opgegeven'}\n\n**Onze klanten die mogelijk passen:**\n${clientLines || 'Geen klanten beschikbaar'}\n\nHet bericht moet:\n- Persoonlijk en warm zijn (gebruik voornaam)\n- Verwijzen naar hun specifieke ervaring/vaardigheden\n- Aangeven dat je mogelijk iets interessants hebt\n- Eindigen met een zachte call-to-action\n\nGeef je antwoord als JSON:\n{\n  \"subject\": \"onderwerp voor email\",\n  \"message\": \"het volledige bericht\",\n  \"matching_client_ids\": [\"id1\", \"id2\"],\n  \"matching_client_names\": [\"naam1\", \"naam2\"],\n  \"follow_up_days\": 3\n}`;\n\nreturn [{json: {prompt, lead_id: lead.id || '', lead_name: name, lead_email: details.email || ''}}];"
+      }
+    },
+    {
+      "id": "http_claude",
+      "name": "Claude Generates Outreach",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 350],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 1024,\n  \"messages\": [{\"role\": \"user\", \"content\": {{ JSON.stringify($json.prompt) }}}]\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "code_parse",
+      "name": "Parse Outreach Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 350],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const text = $json.content?.[0]?.text || '{}';\nconst meta = $('Build Outreach Prompt').first().json;\nlet result;\ntry {\n  result = JSON.parse(text);\n} catch (e) {\n  result = { subject: '', message: text, matching_client_ids: [], follow_up_days: 3 };\n}\n\nresult.lead_id = meta.lead_id;\nresult.lead_name = meta.lead_name;\nresult.lead_email = meta.lead_email;\n\nreturn [{json: result}];"
+      }
+    },
+    {
+      "id": "slack_notify",
+      "name": "Send to Recruiter Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1550, 250],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#recruitment",
+        "text": "=💡 *Lead Verrijking: {{ $json.lead_name }}*\n\n📧 *Onderwerp:* {{ $json.subject }}\n\n💬 *Bericht:*\n{{ $json.message }}\n\n🏢 *Matching klanten:* {{ ($json.matching_client_names || []).join(', ') || 'geen' }}\n⏰ *Follow-up over:* {{ $json.follow_up_days }} dagen\n📨 *Email:* {{ $json.lead_email || 'niet beschikbaar' }}",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "respond_webhook",
+      "name": "Respond with Outreach",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1550, 450],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, outreach: $json }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Lead Enrichment Webhook": {
+      "main": [[
+        { "node": "Fetch Lead from Jaicob", "type": "main", "index": 0 },
+        { "node": "Fetch All Clients", "type": "main", "index": 0 }
+      ]]
+    },
+    "Fetch Lead from Jaicob": {
+      "main": [[{ "node": "Build Outreach Prompt", "type": "main", "index": 0 }]]
+    },
+    "Fetch All Clients": {
+      "main": [[{ "node": "Build Outreach Prompt", "type": "main", "index": 0 }]]
+    },
+    "Build Outreach Prompt": {
+      "main": [[{ "node": "Claude Generates Outreach", "type": "main", "index": 0 }]]
+    },
+    "Claude Generates Outreach": {
+      "main": [[{ "node": "Parse Outreach Response", "type": "main", "index": 0 }]]
+    },
+    "Parse Outreach Response": {
+      "main": [[
+        { "node": "Send to Recruiter Slack", "type": "main", "index": 0 },
+        { "node": "Respond with Outreach", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Amsterdam",
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all"
+  }
+}
