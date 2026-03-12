@@ -6,7 +6,10 @@
       "name": "Every Weekday at 9AM",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [250, 300],
+      "position": [
+        250,
+        300
+      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -23,22 +26,37 @@
       "name": "Fetch All Candidates",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 300],
+      "position": [
+        500,
+        300
+      ],
       "parameters": {
         "method": "GET",
         "url": "https://api.jaicob.ai/candidates/public",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
-            { "name": "x-language", "value": "nl" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            },
+            {
+              "name": "x-language",
+              "value": "nl"
+            }
           ]
         },
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "take", "value": "200" },
-            { "name": "page", "value": "1" }
+            {
+              "name": "take",
+              "value": "200"
+            },
+            {
+              "name": "page",
+              "value": "1"
+            }
           ]
         },
         "options": {}
@@ -49,7 +67,10 @@
       "name": "Find Stale Candidates",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [780, 300],
+      "position": [
+        780,
+        300
+      ],
       "parameters": {
         "language": "javaScript",
         "jsCode": "const candidates = $json.data || [];\nconst STALE_DAYS = 7;\nconst now = new Date();\nconst cutoff = new Date(now.getTime() - STALE_DAYS * 24 * 60 * 60 * 1000);\n\nconst stale = [];\nfor (const c of candidates) {\n  const updated = c.updatedAt ? new Date(c.updatedAt) : new Date(0);\n  if (updated < cutoff) {\n    const details = c.applicantDetails || {};\n    const name = `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'Onbekend';\n    const daysSince = Math.floor((now - updated) / (24 * 60 * 60 * 1000));\n    stale.push({\n      id: c.id,\n      name,\n      function: c.function || '',\n      status: c.status || 'onbekend',\n      days_stale: daysSince,\n      last_updated: c.updatedAt || 'nooit'\n    });\n  }\n}\n\nstale.sort((a, b) => b.days_stale - a.days_stale);\n\nif (stale.length === 0) {\n  return [{json: {has_stale: false, message: 'Alle kandidaten zijn up-to-date!', count: 0}}];\n}\n\nlet alert = '⚠️ *Top Match — Vergeten Kandidaten Alert*\\n';\nalert += `📅 ${now.toLocaleDateString('nl-NL')}\\n${'='.repeat(40)}\\n\\n`;\n\nfor (const c of stale.slice(0, 30)) {\n  alert += `🔴 *${c.name}* — ${c.function || 'geen functie'}\\n`;\n  alert += `   ${c.days_stale} dagen niet bijgewerkt | Status: ${c.status}\\n\\n`;\n}\n\nalert += `\\n📊 Totaal: ${stale.length} kandidaten hebben aandacht nodig.`;\n\nreturn [{json: {has_stale: true, alert, stale_candidates: stale, count: stale.length}}];"
@@ -60,7 +81,10 @@
       "name": "Stale Candidates Found?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1050, 300],
+      "position": [
+        1050,
+        300
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -72,7 +96,11 @@
           "conditions": [
             {
               "id": "check_stale",
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true },
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
               "leftValue": "={{ $json.has_stale }}",
               "rightValue": ""
             }
@@ -83,32 +111,83 @@
     },
     {
       "id": "slack_alert",
-      "name": "Send Alert to Slack",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [1300, 200],
+      "name": "SMS Alert via GoHighLevel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        200
+      ],
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#recruitment",
-        "text": "={{ $json.alert }}",
-        "otherOptions": {}
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GHL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $env.GHL_CONTACT_ID }}\",\n  \"message\": \"=$json.alert\"\n}",
+        "options": {}
       }
     }
   ],
   "connections": {
     "Every Weekday at 9AM": {
-      "main": [[{ "node": "Fetch All Candidates", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Fetch All Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch All Candidates": {
-      "main": [[{ "node": "Find Stale Candidates", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Find Stale Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Find Stale Candidates": {
-      "main": [[{ "node": "Stale Candidates Found?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Stale Candidates Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Stale Candidates Found?": {
       "main": [
-        [{ "node": "Send Alert to Slack", "type": "main", "index": 0 }],
+        [
+          {
+            "node": "SMS Alert via GoHighLevel",
+            "type": "main",
+            "index": 0
+          }
+        ],
         []
       ]
     }

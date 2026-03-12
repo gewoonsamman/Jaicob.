@@ -6,7 +6,10 @@
       "name": "Every Monday at 8AM",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [250, 400],
+      "position": [
+        250,
+        400
+      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -23,21 +26,33 @@
       "name": "Fetch All Clients",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 250],
+      "position": [
+        500,
+        250
+      ],
       "parameters": {
         "method": "GET",
         "url": "https://api.jaicob.ai/clients/public",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
-            { "name": "x-language", "value": "nl" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            },
+            {
+              "name": "x-language",
+              "value": "nl"
+            }
           ]
         },
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "take", "value": "100" }
+            {
+              "name": "take",
+              "value": "100"
+            }
           ]
         },
         "options": {}
@@ -48,21 +63,33 @@
       "name": "Fetch All Vacancies",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 400],
+      "position": [
+        500,
+        400
+      ],
       "parameters": {
         "method": "GET",
         "url": "https://api.jaicob.ai/vacancies/public",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
-            { "name": "x-language", "value": "nl" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            },
+            {
+              "name": "x-language",
+              "value": "nl"
+            }
           ]
         },
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "take", "value": "200" }
+            {
+              "name": "take",
+              "value": "200"
+            }
           ]
         },
         "options": {}
@@ -73,21 +100,33 @@
       "name": "Fetch All Applications",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 550],
+      "position": [
+        500,
+        550
+      ],
       "parameters": {
         "method": "GET",
         "url": "https://api.jaicob.ai/applications/public",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
-            { "name": "x-language", "value": "nl" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            },
+            {
+              "name": "x-language",
+              "value": "nl"
+            }
           ]
         },
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "take", "value": "200" }
+            {
+              "name": "take",
+              "value": "200"
+            }
           ]
         },
         "options": {}
@@ -98,7 +137,10 @@
       "name": "Build Per-Client Summaries",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [800, 400],
+      "position": [
+        800,
+        400
+      ],
       "parameters": {
         "language": "javaScript",
         "jsCode": "const clients = ($('Fetch All Clients').first().json.data || []);\nconst vacancies = ($('Fetch All Vacancies').first().json.data || []);\nconst applications = ($('Fetch All Applications').first().json.data || []);\n\nconst weekAgo = new Date();\nweekAgo.setDate(weekAgo.getDate() - 7);\n\nconst results = [];\nfor (const client of clients) {\n  const clientId = client.id;\n  const clientVacancies = vacancies.filter(v => v.clientId === clientId);\n  const vacancyTitles = clientVacancies.map(v => v.title || '').join(', ');\n  const clientApps = applications.filter(a => a.clientId === clientId);\n  const newApps = clientApps.filter(a => {\n    try { return new Date(a.createdAt) >= weekAgo; } catch(e) { return false; }\n  });\n\n  results.push({\n    json: {\n      client_id: clientId,\n      client_name: client.companyName || 'Onbekend',\n      active_vacancies: clientVacancies.length,\n      vacancy_titles: vacancyTitles || 'geen',\n      total_applications: clientApps.length,\n      new_applications: newApps.length,\n      prompt: `Je bent de account manager bij Top Match. Schrijf een kort weekrapport (3-5 zinnen, professioneel Nederlands) voor de klant.\\n\\nKlant: ${client.companyName}\\nActieve vacatures: ${clientVacancies.length}\\nVacature-titels: ${vacancyTitles || 'geen'}\\nNieuwe sollicitaties deze week: ${newApps.length}\\nTotaal sollicitaties: ${clientApps.length}\\n\\nAls er weinig activiteit is, stel dan proactief een actie voor.\\n\\nAntwoord als JSON:\\n{\\n  \"summary\": \"het rapport\",\\n  \"status\": \"on_track|needs_attention|urgent\",\\n  \"suggested_actions\": [\"actie 1\", \"actie 2\"]\\n}`\n    }\n  });\n}\n\nreturn results.length > 0 ? results : [{json: {error: 'Geen klanten gevonden'}}];"
@@ -109,16 +151,28 @@
       "name": "Claude Writes Reports",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1080, 400],
+      "position": [
+        1080,
+        400
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://api.anthropic.com/v1/messages",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -139,7 +193,10 @@
       "name": "Build Weekly Digest",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1350, 400],
+      "position": [
+        1350,
+        400
+      ],
       "parameters": {
         "language": "javaScript",
         "jsCode": "const items = $input.all();\nconst clientItems = $('Build Per-Client Summaries').all();\nconst statusIcons = { on_track: '🟢', needs_attention: '🟡', urgent: '🔴' };\n\nconst now = new Date();\nlet digest = `📊 *Top Match — Wekelijks Klantenoverzicht*\\n📅 ${now.toLocaleDateString('nl-NL')}\\n${'='.repeat(40)}\\n\\n`;\n\nconst reports = [];\nfor (let i = 0; i < items.length; i++) {\n  const client = clientItems[i]?.json || {};\n  let report;\n  try {\n    const text = items[i].json.content?.[0]?.text || '{}';\n    report = JSON.parse(text);\n  } catch (e) {\n    report = { summary: items[i].json.content?.[0]?.text || 'Geen rapport', status: 'on_track', suggested_actions: [] };\n  }\n\n  const icon = statusIcons[report.status] || '⚪';\n  digest += `${icon} *${client.client_name}*\\n`;\n  digest += `   ${report.summary}\\n`;\n  if (report.suggested_actions && report.suggested_actions.length > 0) {\n    digest += `   Acties:\\n`;\n    for (const action of report.suggested_actions) {\n      digest += `   • ${action}\\n`;\n    }\n  }\n  digest += '\\n';\n\n  reports.push({\n    client_id: client.client_id,\n    client_name: client.client_name,\n    ...report\n  });\n}\n\nreturn [{json: {digest, reports, generated_at: now.toISOString()}}];"
@@ -147,44 +204,127 @@
     },
     {
       "id": "slack_report",
-      "name": "Send Weekly Report to Slack",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [1620, 400],
+      "name": "SMS Weekrapport via GoHighLevel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1620,
+        400
+      ],
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#management",
-        "text": "={{ $json.digest }}",
-        "otherOptions": {}
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GHL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $env.GHL_CONTACT_ID }}\",\n  \"message\": \"=$json.digest\"\n}",
+        "options": {}
       }
     }
   ],
   "connections": {
     "Every Monday at 8AM": {
-      "main": [[
-        { "node": "Fetch All Clients", "type": "main", "index": 0 },
-        { "node": "Fetch All Vacancies", "type": "main", "index": 0 },
-        { "node": "Fetch All Applications", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Fetch All Clients",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch All Vacancies",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch All Applications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch All Clients": {
-      "main": [[{ "node": "Build Per-Client Summaries", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Per-Client Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch All Vacancies": {
-      "main": [[{ "node": "Build Per-Client Summaries", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Per-Client Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch All Applications": {
-      "main": [[{ "node": "Build Per-Client Summaries", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Per-Client Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Per-Client Summaries": {
-      "main": [[{ "node": "Claude Writes Reports", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Claude Writes Reports",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claude Writes Reports": {
-      "main": [[{ "node": "Build Weekly Digest", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Weekly Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Weekly Digest": {
-      "main": [[{ "node": "Send Weekly Report to Slack", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "SMS Weekrapport via GoHighLevel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {

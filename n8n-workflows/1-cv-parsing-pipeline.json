@@ -6,7 +6,10 @@
       "name": "CV Upload Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 300],
+      "position": [
+        250,
+        300
+      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "topmatch-cv-upload",
@@ -20,15 +23,24 @@
       "name": "Parse CV via Jaicob",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 300],
+      "position": [
+        500,
+        300
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://api.jaicob.ai/file/resume",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
-            { "name": "x-language", "value": "nl" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            },
+            {
+              "name": "x-language",
+              "value": "nl"
+            }
           ]
         },
         "sendBody": true,
@@ -50,22 +62,37 @@
       "name": "Fetch Active Vacancies",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [750, 300],
+      "position": [
+        750,
+        300
+      ],
       "parameters": {
         "method": "GET",
         "url": "https://api.jaicob.ai/vacancies/public",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
-            { "name": "x-language", "value": "nl" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            },
+            {
+              "name": "x-language",
+              "value": "nl"
+            }
           ]
         },
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "take", "value": "100" },
-            { "name": "page", "value": "1" }
+            {
+              "name": "take",
+              "value": "100"
+            },
+            {
+              "name": "page",
+              "value": "1"
+            }
           ]
         },
         "options": {}
@@ -76,7 +103,10 @@
       "name": "Build Scoring Prompts",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1000, 300],
+      "position": [
+        1000,
+        300
+      ],
       "parameters": {
         "language": "javaScript",
         "jsCode": "const parsedCV = $('Parse CV via Jaicob').first().json;\nconst vacancies = $('Fetch Active Vacancies').first().json.data || [];\nconst candidateJson = JSON.stringify(parsedCV, null, 2);\n\nconst results = [];\nfor (const vacancy of vacancies.slice(0, 10)) {\n  results.push({\n    json: {\n      candidate: parsedCV,\n      vacancy_id: vacancy.id,\n      vacancy_title: vacancy.title || '',\n      prompt: `Je bent een senior recruiter bij Top Match, een recruitmentbureau in Nederland.\\n\\nHieronder staat het geparseerde CV van een kandidaat en de beschrijving van een vacature.\\n\\n**Kandidaat (JSON):**\\n${candidateJson.substring(0, 3000)}\\n\\n**Vacature:**\\nTitel: ${vacancy.title}\\nBeschrijving: ${(vacancy.description || '').substring(0, 1000)}\\n\\nGeef een JSON-antwoord met exact deze velden:\\n- \"score\": een getal van 0.0 tot 1.0 dat aangeeft hoe goed de kandidaat past\\n- \"reasoning\": een korte uitleg in het Nederlands (max 3 zinnen)\\n- \"missing\": een lijst van vaardigheden/eisen die de kandidaat mist\\n\\nAntwoord ALLEEN met geldige JSON, geen tekst eromheen.`\n    }\n  });\n}\n\nreturn results.length > 0 ? results : [{ json: { error: 'Geen vacatures gevonden' } }];"
@@ -87,16 +117,28 @@
       "name": "Claude AI Scoring",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1250, 300],
+      "position": [
+        1250,
+        300
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://api.anthropic.com/v1/messages",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -117,7 +159,10 @@
       "name": "Filter Top Matches",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1500, 300],
+      "position": [
+        1500,
+        300
+      ],
       "parameters": {
         "language": "javaScript",
         "jsCode": "const items = $input.all();\nconst pairItems = $('Build Scoring Prompts').all();\nconst MIN_SCORE = 0.6;\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  try {\n    const responseText = items[i].json.content?.[0]?.text || '{}';\n    const scoreData = JSON.parse(responseText);\n    const pair = pairItems[i]?.json || {};\n\n    if (scoreData.score >= MIN_SCORE) {\n      results.push({\n        json: {\n          score: Math.round(scoreData.score * 100),\n          reasoning: scoreData.reasoning,\n          missing: scoreData.missing,\n          vacancy_title: pair.vacancy_title,\n          vacancy_id: pair.vacancy_id,\n          candidate: pair.candidate\n        }\n      });\n    }\n  } catch (e) { /* skip */ }\n}\n\nresults.sort((a, b) => b.json.score - a.json.score);\nreturn results.length > 0 ? results : [{json: {message: 'Geen matches gevonden boven drempel', score: 0}}];"
@@ -128,7 +173,10 @@
       "name": "Match Found?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1750, 300],
+      "position": [
+        1750,
+        300
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -140,7 +188,10 @@
           "conditions": [
             {
               "id": "score_check",
-              "operator": { "type": "number", "operation": "gt" },
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
               "leftValue": "={{ $json.score }}",
               "rightValue": 0
             }
@@ -154,15 +205,24 @@
       "name": "Create Candidate in Jaicob",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2000, 200],
+      "position": [
+        2000,
+        200
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://api.jaicob.ai/candidates",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -173,16 +233,37 @@
     },
     {
       "id": "slack_notify",
-      "name": "Notify Recruiter Slack",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [2000, 400],
+      "name": "SMS Recruiter via GoHighLevel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        400
+      ],
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#recruitment",
-        "text": "=🎯 *Nieuwe CV Match!*\n\nScore: {{ $json.score }}%\nVacature: {{ $json.vacancy_title }}\nReden: {{ $json.reasoning }}\nOntbreekt: {{ ($json.missing || []).join(', ') || 'niets' }}\n\nKandidaat is automatisch aangemaakt in Jaicob.",
-        "otherOptions": {}
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GHL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $env.GHL_CONTACT_ID }}\",\n  \"message\": \"=\\\"Nieuwe CV Match! Score: \\\" + String($json.score) + \\\"% | Vacature: \\\" + $json.vacancy_title + \\\" | \\\" + $json.reasoning\"\n}",
+        "options": {}
       }
     },
     {
@@ -190,7 +271,10 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2250, 300],
+      "position": [
+        2250,
+        300
+      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: true, matches: $('Filter Top Matches').all().map(i => i.json) }) }}",
@@ -200,36 +284,104 @@
   ],
   "connections": {
     "CV Upload Webhook": {
-      "main": [[{ "node": "Parse CV via Jaicob", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Parse CV via Jaicob",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse CV via Jaicob": {
-      "main": [[{ "node": "Fetch Active Vacancies", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Fetch Active Vacancies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Active Vacancies": {
-      "main": [[{ "node": "Build Scoring Prompts", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Scoring Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Scoring Prompts": {
-      "main": [[{ "node": "Claude AI Scoring", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Claude AI Scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claude AI Scoring": {
-      "main": [[{ "node": "Filter Top Matches", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Filter Top Matches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Filter Top Matches": {
-      "main": [[{ "node": "Match Found?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Match Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Match Found?": {
       "main": [
         [
-          { "node": "Create Candidate in Jaicob", "type": "main", "index": 0 },
-          { "node": "Notify Recruiter Slack", "type": "main", "index": 0 }
+          {
+            "node": "Create Candidate in Jaicob",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "SMS Recruiter via GoHighLevel",
+            "type": "main",
+            "index": 0
+          }
         ],
         [
-          { "node": "Respond to Webhook", "type": "main", "index": 0 }
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Create Candidate in Jaicob": {
-      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {

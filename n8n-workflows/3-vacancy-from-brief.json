@@ -6,7 +6,10 @@
       "name": "Vacancy Brief Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 350],
+      "position": [
+        250,
+        350
+      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "topmatch-vacancy-brief",
@@ -18,14 +21,20 @@
       "name": "Fetch Industries",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 150],
+      "position": [
+        500,
+        150
+      ],
       "parameters": {
         "method": "GET",
         "url": "https://api.jaicob.ai/industries",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            }
           ]
         },
         "options": {}
@@ -36,14 +45,20 @@
       "name": "Fetch Education Levels",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 300],
+      "position": [
+        500,
+        300
+      ],
       "parameters": {
         "method": "GET",
         "url": "https://api.jaicob.ai/educations",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            }
           ]
         },
         "options": {}
@@ -54,14 +69,20 @@
       "name": "Fetch Job Categories",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 450],
+      "position": [
+        500,
+        450
+      ],
       "parameters": {
         "method": "GET",
         "url": "https://api.jaicob.ai/job-categories",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            }
           ]
         },
         "options": {}
@@ -72,14 +93,20 @@
       "name": "Fetch Seniorities",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 600],
+      "position": [
+        500,
+        600
+      ],
       "parameters": {
         "method": "GET",
         "url": "https://api.jaicob.ai/seniorities",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            }
           ]
         },
         "options": {}
@@ -90,7 +117,10 @@
       "name": "Build Vacancy Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [780, 350],
+      "position": [
+        780,
+        350
+      ],
       "parameters": {
         "language": "javaScript",
         "jsCode": "const brief = $('Vacancy Brief Webhook').first().json.body?.brief || $('Vacancy Brief Webhook').first().json.brief || '';\n\nconst fmt = (items) => {\n  const arr = Array.isArray(items) ? items : [];\n  return arr.slice(0, 30).map(i => `${i.id}: ${i.name}`).join(', ');\n};\n\nconst industries = fmt($('Fetch Industries').first().json);\nconst educations = fmt($('Fetch Education Levels').first().json);\nconst jobCats = fmt($('Fetch Job Categories').first().json);\nconst seniorities = fmt($('Fetch Seniorities').first().json);\n\nconst prompt = `Je bent een recruitment-specialist bij Top Match, een professioneel recruitmentbureau in Nederland. Maak van het onderstaande korte vacature-briefje een volledige, aantrekkelijke vacaturetekst.\n\n**Briefje van recruiter:**\n${brief}\n\n**Beschikbare taxonomie-opties (kies het best passende ID):**\nIndustrieën: ${industries}\nOpleidingsniveaus: ${educations}\nFunctiecategorieën: ${jobCats}\nSenioriteitsniveaus: ${seniorities}\n\nGeef je antwoord als JSON met exact deze velden:\n{\n  \"title\": \"functietitel\",\n  \"description\": \"volledige vacaturetekst in HTML-formaat met <h3>, <ul>, <li>, <p> tags\",\n  \"employmentType\": \"permanent|temporary|fixed_term|fixed_term_with_option_for_permanent|freelance|traineeship|internship\",\n  \"yearsOfExperience\": 0,\n  \"workingHours\": {\"from\": 32, \"to\": 40},\n  \"salary\": {\"period\": \"monthly\", \"from\": 0, \"to\": 0, \"currency\": \"EUR\"},\n  \"location\": {\"city\": \"stad\", \"country\": \"NL\", \"allowsRemoteWork\": false},\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"industryId\": \"gekozen-id\",\n  \"educationLevelId\": \"gekozen-id\",\n  \"jobCategoryId\": \"gekozen-id\",\n  \"seniorityId\": \"gekozen-id\"\n}\n\nSchrijf de beschrijving in professioneel, enthousiast Nederlands. Antwoord ALLEEN met geldige JSON.`;\n\nreturn [{json: {prompt, brief}}];"
@@ -101,16 +131,28 @@
       "name": "Claude Generates Vacancy",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1050, 350],
+      "position": [
+        1050,
+        350
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://api.anthropic.com/v1/messages",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -124,7 +166,10 @@
       "name": "Parse Vacancy JSON",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1300, 350],
+      "position": [
+        1300,
+        350
+      ],
       "parameters": {
         "language": "javaScript",
         "jsCode": "const text = $json.content?.[0]?.text || '{}';\nlet vacancyData;\ntry {\n  vacancyData = JSON.parse(text);\n} catch (e) {\n  const match = text.match(/```(?:json)?\\n?([\\s\\S]*?)\\n?```/);\n  if (match) {\n    vacancyData = JSON.parse(match[1].trim());\n  } else {\n    throw new Error('Claude gaf geen geldig JSON terug: ' + text.substring(0, 200));\n  }\n}\nreturn [{json: vacancyData}];"
@@ -135,15 +180,24 @@
       "name": "Publish to Jaicob",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1550, 350],
+      "position": [
+        1550,
+        350
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://api.jaicob.ai/vacancies",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -154,16 +208,37 @@
     },
     {
       "id": "slack_notify",
-      "name": "Notify Vacancy Created",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [1800, 250],
+      "name": "SMS Vacature via GoHighLevel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        250
+      ],
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#recruitment",
-        "text": "=📋 *Nieuwe vacature aangemaakt!*\n\n📌 Titel: {{ $('Parse Vacancy JSON').first().json.title }}\n💼 Type: {{ $('Parse Vacancy JSON').first().json.employmentType }}\n📍 Locatie: {{ $('Parse Vacancy JSON').first().json.location?.city || 'n.v.t.' }}\n💰 Salaris: €{{ $('Parse Vacancy JSON').first().json.salary?.from || '?' }} - €{{ $('Parse Vacancy JSON').first().json.salary?.to || '?' }}\n🔗 Jaicob ID: {{ $json.id }}",
-        "otherOptions": {}
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GHL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $env.GHL_CONTACT_ID }}\",\n  \"message\": \"=\\\"Nieuwe vacature: \\\" + $('Parse Vacancy JSON').first().json.title + \\\" | Type: \\\" + $('Parse Vacancy JSON').first().json.employmentType + \\\" | Locatie: \\\" + ($('Parse Vacancy JSON').first().json.location?.city || 'n.v.t.')\"\n}",
+        "options": {}
       }
     },
     {
@@ -171,7 +246,10 @@
       "name": "Respond with Vacancy",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1800, 450],
+      "position": [
+        1800,
+        450
+      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: true, vacancy_id: $('Publish to Jaicob').first().json.id, vacancy: $('Parse Vacancy JSON').first().json }) }}",
@@ -181,39 +259,123 @@
   ],
   "connections": {
     "Vacancy Brief Webhook": {
-      "main": [[
-        { "node": "Fetch Industries", "type": "main", "index": 0 },
-        { "node": "Fetch Education Levels", "type": "main", "index": 0 },
-        { "node": "Fetch Job Categories", "type": "main", "index": 0 },
-        { "node": "Fetch Seniorities", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Fetch Industries",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Education Levels",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Job Categories",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Seniorities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Industries": {
-      "main": [[{ "node": "Build Vacancy Prompt", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Vacancy Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Education Levels": {
-      "main": [[{ "node": "Build Vacancy Prompt", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Vacancy Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Job Categories": {
-      "main": [[{ "node": "Build Vacancy Prompt", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Vacancy Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Seniorities": {
-      "main": [[{ "node": "Build Vacancy Prompt", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Vacancy Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Vacancy Prompt": {
-      "main": [[{ "node": "Claude Generates Vacancy", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Claude Generates Vacancy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claude Generates Vacancy": {
-      "main": [[{ "node": "Parse Vacancy JSON", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Parse Vacancy JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse Vacancy JSON": {
-      "main": [[{ "node": "Publish to Jaicob", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Publish to Jaicob",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Publish to Jaicob": {
-      "main": [[
-        { "node": "Notify Vacancy Created", "type": "main", "index": 0 },
-        { "node": "Respond with Vacancy", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "SMS Vacature via GoHighLevel",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond with Vacancy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {

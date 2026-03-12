@@ -6,7 +6,10 @@
       "name": "Every Morning at 6AM",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [250, 400],
+      "position": [
+        250,
+        400
+      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -23,22 +26,37 @@
       "name": "Fetch All Candidates",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 300],
+      "position": [
+        500,
+        300
+      ],
       "parameters": {
         "method": "GET",
         "url": "https://api.jaicob.ai/candidates/public",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
-            { "name": "x-language", "value": "nl" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            },
+            {
+              "name": "x-language",
+              "value": "nl"
+            }
           ]
         },
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "take", "value": "100" },
-            { "name": "page", "value": "1" }
+            {
+              "name": "take",
+              "value": "100"
+            },
+            {
+              "name": "page",
+              "value": "1"
+            }
           ]
         },
         "options": {}
@@ -49,22 +67,37 @@
       "name": "Fetch All Vacancies",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 500],
+      "position": [
+        500,
+        500
+      ],
       "parameters": {
         "method": "GET",
         "url": "https://api.jaicob.ai/vacancies/public",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.JAICOB_API_KEY }}" },
-            { "name": "x-language", "value": "nl" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.JAICOB_API_KEY }}"
+            },
+            {
+              "name": "x-language",
+              "value": "nl"
+            }
           ]
         },
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "take", "value": "100" },
-            { "name": "page", "value": "1" }
+            {
+              "name": "take",
+              "value": "100"
+            },
+            {
+              "name": "page",
+              "value": "1"
+            }
           ]
         },
         "options": {}
@@ -75,7 +108,10 @@
       "name": "Build Candidate-Vacancy Pairs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [780, 400],
+      "position": [
+        780,
+        400
+      ],
       "parameters": {
         "language": "javaScript",
         "jsCode": "const candidates = $('Fetch All Candidates').first().json.data || [];\nconst vacancies = $('Fetch All Vacancies').first().json.data || [];\n\nconst pairs = [];\nfor (const candidate of candidates) {\n  const details = candidate.applicantDetails || {};\n  const name = `${details.firstName || ''} ${details.lastName || ''}`.trim();\n  const skills = (candidate.skills || []).map(s => s.name).join(', ');\n  const experience = (candidate.workExperiences || []).slice(0, 5)\n    .map(e => `${e.position || ''} bij ${e.company || ''}`).join('; ');\n\n  for (const vacancy of vacancies) {\n    pairs.push({\n      json: {\n        candidate_id: candidate.id,\n        candidate_name: name || 'Onbekend',\n        vacancy_id: vacancy.id,\n        vacancy_title: vacancy.title || '',\n        prompt: `Je bent een senior recruiter bij Top Match. Beoordeel of deze kandidaat past bij de vacature. Let op semantische overeenkomsten — bijv. \"Medewerker binnendienst\" = \"Inside Sales\", \"Projectleider\" = \"Project Manager\".\\n\\nKandidaat: ${name}\\nFunctie: ${candidate.function || 'n.v.t.'}\\nVaardigheden: ${skills || 'niet opgegeven'}\\nErvaring: ${experience || 'niet opgegeven'}\\n\\nVacature: ${vacancy.title}\\nBeschrijving: ${(vacancy.description || '').substring(0, 800)}\\n\\nAntwoord als JSON:\\n- \"match_score\": 0.0-1.0\\n- \"explanation\": korte uitleg in NL (max 2 zinnen)\\n- \"key_overlaps\": lijst van overlappende skills/ervaring`\n      }\n    });\n  }\n}\n\nreturn pairs.length > 0 ? pairs : [{json: {error: 'Geen paren om te matchen'}}];"
@@ -86,16 +122,28 @@
       "name": "Claude Semantic Matching",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1050, 400],
+      "position": [
+        1050,
+        400
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://api.anthropic.com/v1/messages",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -116,7 +164,10 @@
       "name": "Build Match Digest",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1320, 400],
+      "position": [
+        1320,
+        400
+      ],
       "parameters": {
         "language": "javaScript",
         "jsCode": "const items = $input.all();\nconst pairItems = $('Build Candidate-Vacancy Pairs').all();\nconst MIN_SCORE = 0.6;\nconst matches = [];\n\nfor (let i = 0; i < items.length; i++) {\n  try {\n    const text = items[i].json.content?.[0]?.text || '{}';\n    const result = JSON.parse(text);\n    const pair = pairItems[i]?.json || {};\n\n    if (result.match_score >= MIN_SCORE) {\n      matches.push({\n        candidate_name: pair.candidate_name,\n        candidate_id: pair.candidate_id,\n        vacancy_title: pair.vacancy_title,\n        vacancy_id: pair.vacancy_id,\n        match_score: result.match_score,\n        explanation: result.explanation,\n        key_overlaps: result.key_overlaps || []\n      });\n    }\n  } catch (e) { /* skip */ }\n}\n\nmatches.sort((a, b) => b.match_score - a.match_score);\n\nif (matches.length === 0) {\n  return [{json: {has_matches: false, digest: 'Geen nieuwe matches vandaag.', count: 0}}];\n}\n\nlet digest = '🔍 *Top Match — Dagelijks Matching Overzicht*\\n';\ndigest += `📅 ${new Date().toLocaleDateString('nl-NL')}\\n\\n`;\n\nfor (const m of matches.slice(0, 20)) {\n  const pct = Math.round(m.match_score * 100);\n  digest += `✅ *${m.candidate_name}* → ${m.vacancy_title} (${pct}%)\\n`;\n  digest += `   ${m.explanation}\\n`;\n  if (m.key_overlaps.length > 0) {\n    digest += `   Overlap: ${m.key_overlaps.join(', ')}\\n`;\n  }\n  digest += '\\n';\n}\n\ndigest += `\\n📊 Totaal: ${matches.length} matches gevonden.`;\n\nreturn [{json: {has_matches: true, digest, matches, count: matches.length}}];"
@@ -127,7 +178,10 @@
       "name": "Has Matches?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1570, 400],
+      "position": [
+        1570,
+        400
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -139,7 +193,11 @@
           "conditions": [
             {
               "id": "check_matches",
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true },
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
               "leftValue": "={{ $json.has_matches }}",
               "rightValue": ""
             }
@@ -150,44 +208,121 @@
     },
     {
       "id": "slack_digest",
-      "name": "Send Digest to Slack",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [1820, 300],
+      "name": "SMS Digest via GoHighLevel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1820,
+        300
+      ],
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#recruitment",
-        "text": "={{ $json.digest }}",
-        "otherOptions": {}
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GHL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $env.GHL_CONTACT_ID }}\",\n  \"message\": \"=$json.digest\"\n}",
+        "options": {}
       }
     }
   ],
   "connections": {
     "Every Morning at 6AM": {
-      "main": [[
-        { "node": "Fetch All Candidates", "type": "main", "index": 0 },
-        { "node": "Fetch All Vacancies", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Fetch All Candidates",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch All Vacancies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch All Candidates": {
-      "main": [[{ "node": "Build Candidate-Vacancy Pairs", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Candidate-Vacancy Pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch All Vacancies": {
-      "main": [[{ "node": "Build Candidate-Vacancy Pairs", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Candidate-Vacancy Pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Candidate-Vacancy Pairs": {
-      "main": [[{ "node": "Claude Semantic Matching", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Claude Semantic Matching",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claude Semantic Matching": {
-      "main": [[{ "node": "Build Match Digest", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Match Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Match Digest": {
-      "main": [[{ "node": "Has Matches?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Has Matches?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Has Matches?": {
       "main": [
-        [{ "node": "Send Digest to Slack", "type": "main", "index": 0 }],
+        [
+          {
+            "node": "SMS Digest via GoHighLevel",
+            "type": "main",
+            "index": 0
+          }
+        ],
         []
       ]
     }
