@@ -1,0 +1,15 @@
+[project]
+name = "topmatch-jaicob"
+version = "0.1.0"
+description = "Top Match recruitment automation toolkit powered by Jaicob.ai ATS"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "anthropic>=0.40",
+    "python-dotenv>=1.0",
+    "rich>=13.0",
+    "schedule>=1.2",
+]
+
+[project.scripts]
+topmatch = "topmatch.cli:main"
