@@ -1,5 +1,5 @@
 {
-  "name": "Top Match — Nightly Candidate-Vacancy Matching",
+  "name": "Top Match \u2014 Nightly Candidate-Vacancy Matching",
   "nodes": [
     {
       "id": "schedule_1",
@@ -114,48 +114,43 @@
       ],
       "parameters": {
         "language": "javaScript",
-        "jsCode": "const candidates = $('Fetch All Candidates').first().json.data || [];\nconst vacancies = $('Fetch All Vacancies').first().json.data || [];\n\nconst pairs = [];\nfor (const candidate of candidates) {\n  const details = candidate.applicantDetails || {};\n  const name = `${details.firstName || ''} ${details.lastName || ''}`.trim();\n  const skills = (candidate.skills || []).map(s => s.name).join(', ');\n  const experience = (candidate.workExperiences || []).slice(0, 5)\n    .map(e => `${e.position || ''} bij ${e.company || ''}`).join('; ');\n\n  for (const vacancy of vacancies) {\n    pairs.push({\n      json: {\n        candidate_id: candidate.id,\n        candidate_name: name || 'Onbekend',\n        vacancy_id: vacancy.id,\n        vacancy_title: vacancy.title || '',\n        prompt: `Je bent een senior recruiter bij Top Match. Beoordeel of deze kandidaat past bij de vacature. Let op semantische overeenkomsten — bijv. \"Medewerker binnendienst\" = \"Inside Sales\", \"Projectleider\" = \"Project Manager\".\\n\\nKandidaat: ${name}\\nFunctie: ${candidate.function || 'n.v.t.'}\\nVaardigheden: ${skills || 'niet opgegeven'}\\nErvaring: ${experience || 'niet opgegeven'}\\n\\nVacature: ${vacancy.title}\\nBeschrijving: ${(vacancy.description || '').substring(0, 800)}\\n\\nAntwoord als JSON:\\n- \"match_score\": 0.0-1.0\\n- \"explanation\": korte uitleg in NL (max 2 zinnen)\\n- \"key_overlaps\": lijst van overlappende skills/ervaring`\n      }\n    });\n  }\n}\n\nreturn pairs.length > 0 ? pairs : [{json: {error: 'Geen paren om te matchen'}}];"
+        "jsCode": "const candidates = $('Fetch All Candidates').first().json.data || [];\nconst vacancies = $('Fetch All Vacancies').first().json.data || [];\n\nconst pairs = [];\nfor (const candidate of candidates) {\n  const details = candidate.applicantDetails || {};\n  const name = `${details.firstName || ''} ${details.lastName || ''}`.trim();\n  const skills = (candidate.skills || []).map(s => s.name).join(', ');\n  const experience = (candidate.workExperiences || []).slice(0, 5)\n    .map(e => `${e.position || ''} bij ${e.company || ''}`).join('; ');\n\n  for (const vacancy of vacancies) {\n    pairs.push({\n      json: {\n        candidate_id: candidate.id,\n        candidate_name: name || 'Onbekend',\n        vacancy_id: vacancy.id,\n        vacancy_title: vacancy.title || '',\n        prompt: `Je bent een senior recruiter bij Top Match. Beoordeel of deze kandidaat past bij de vacature. Let op semantische overeenkomsten \u2014 bijv. \"Medewerker binnendienst\" = \"Inside Sales\", \"Projectleider\" = \"Project Manager\".\\n\\nKandidaat: ${name}\\nFunctie: ${candidate.function || 'n.v.t.'}\\nVaardigheden: ${skills || 'niet opgegeven'}\\nErvaring: ${experience || 'niet opgegeven'}\\n\\nVacature: ${vacancy.title}\\nBeschrijving: ${(vacancy.description || '').substring(0, 800)}\\n\\nAntwoord als JSON:\\n- \"match_score\": 0.0-1.0\\n- \"explanation\": korte uitleg in NL (max 2 zinnen)\\n- \"key_overlaps\": lijst van overlappende skills/ervaring`\n      }\n    });\n  }\n}\n\nreturn pairs.length > 0 ? pairs : [{json: {error: 'Geen paren om te matchen'}}];"
       }
     },
     {
       "id": "http_claude",
       "name": "Claude Semantic Matching",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
       "position": [
         1050,
         400
       ],
       "parameters": {
-        "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-sonnet-4-20250514"
+        },
+        "messages": {
+          "values": [
             {
-              "name": "x-api-key",
-              "value": "={{ $env.ANTHROPIC_API_KEY }}"
-            },
-            {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
+              "content": "={{ $json.prompt }}",
+              "role": "user"
             }
           ]
         },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 512,\n  \"messages\": [{\"role\": \"user\", \"content\": {{ JSON.stringify($json.prompt) }}}]\n}",
+        "simplify": false,
         "options": {
-          "batching": {
-            "batch": {
-              "batchSize": 5,
-              "batchInterval": 1500
-            }
-          }
+          "maxTokens": 512
+        }
+      },
+      "credentials": {
+        "anthropicApi": {
+          "id": "",
+          "name": "Anthropic account"
         }
       }
     },
@@ -170,7 +165,7 @@
       ],
       "parameters": {
         "language": "javaScript",
-        "jsCode": "const items = $input.all();\nconst pairItems = $('Build Candidate-Vacancy Pairs').all();\nconst MIN_SCORE = 0.6;\nconst matches = [];\n\nfor (let i = 0; i < items.length; i++) {\n  try {\n    const text = items[i].json.content?.[0]?.text || '{}';\n    const result = JSON.parse(text);\n    const pair = pairItems[i]?.json || {};\n\n    if (result.match_score >= MIN_SCORE) {\n      matches.push({\n        candidate_name: pair.candidate_name,\n        candidate_id: pair.candidate_id,\n        vacancy_title: pair.vacancy_title,\n        vacancy_id: pair.vacancy_id,\n        match_score: result.match_score,\n        explanation: result.explanation,\n        key_overlaps: result.key_overlaps || []\n      });\n    }\n  } catch (e) { /* skip */ }\n}\n\nmatches.sort((a, b) => b.match_score - a.match_score);\n\nif (matches.length === 0) {\n  return [{json: {has_matches: false, digest: 'Geen nieuwe matches vandaag.', count: 0}}];\n}\n\nlet digest = '🔍 *Top Match — Dagelijks Matching Overzicht*\\n';\ndigest += `📅 ${new Date().toLocaleDateString('nl-NL')}\\n\\n`;\n\nfor (const m of matches.slice(0, 20)) {\n  const pct = Math.round(m.match_score * 100);\n  digest += `✅ *${m.candidate_name}* → ${m.vacancy_title} (${pct}%)\\n`;\n  digest += `   ${m.explanation}\\n`;\n  if (m.key_overlaps.length > 0) {\n    digest += `   Overlap: ${m.key_overlaps.join(', ')}\\n`;\n  }\n  digest += '\\n';\n}\n\ndigest += `\\n📊 Totaal: ${matches.length} matches gevonden.`;\n\nreturn [{json: {has_matches: true, digest, matches, count: matches.length}}];"
+        "jsCode": "const items = $input.all();\nconst pairItems = $('Build Candidate-Vacancy Pairs').all();\nconst MIN_SCORE = 0.6;\nconst matches = [];\n\nfor (let i = 0; i < items.length; i++) {\n  try {\n    const text = items[i].json.content?.[0]?.text || '{}';\n    const result = JSON.parse(text);\n    const pair = pairItems[i]?.json || {};\n\n    if (result.match_score >= MIN_SCORE) {\n      matches.push({\n        candidate_name: pair.candidate_name,\n        candidate_id: pair.candidate_id,\n        vacancy_title: pair.vacancy_title,\n        vacancy_id: pair.vacancy_id,\n        match_score: result.match_score,\n        explanation: result.explanation,\n        key_overlaps: result.key_overlaps || []\n      });\n    }\n  } catch (e) { /* skip */ }\n}\n\nmatches.sort((a, b) => b.match_score - a.match_score);\n\nif (matches.length === 0) {\n  return [{json: {has_matches: false, digest: 'Geen nieuwe matches vandaag.', count: 0}}];\n}\n\nlet digest = '\ud83d\udd0d *Top Match \u2014 Dagelijks Matching Overzicht*\\n';\ndigest += `\ud83d\udcc5 ${new Date().toLocaleDateString('nl-NL')}\\n\\n`;\n\nfor (const m of matches.slice(0, 20)) {\n  const pct = Math.round(m.match_score * 100);\n  digest += `\u2705 *${m.candidate_name}* \u2192 ${m.vacancy_title} (${pct}%)\\n`;\n  digest += `   ${m.explanation}\\n`;\n  if (m.key_overlaps.length > 0) {\n    digest += `   Overlap: ${m.key_overlaps.join(', ')}\\n`;\n  }\n  digest += '\\n';\n}\n\ndigest += `\\n\ud83d\udcca Totaal: ${matches.length} matches gevonden.`;\n\nreturn [{json: {has_matches: true, digest, matches, count: matches.length}}];"
       }
     },
     {

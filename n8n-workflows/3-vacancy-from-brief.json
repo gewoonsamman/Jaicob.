@@ -1,5 +1,5 @@
 {
-  "name": "Top Match — Vacancy Creation from Brief",
+  "name": "Top Match \u2014 Vacancy Creation from Brief",
   "nodes": [
     {
       "id": "webhook_1",
@@ -123,42 +123,44 @@
       ],
       "parameters": {
         "language": "javaScript",
-        "jsCode": "const brief = $('Vacancy Brief Webhook').first().json.body?.brief || $('Vacancy Brief Webhook').first().json.brief || '';\n\nconst fmt = (items) => {\n  const arr = Array.isArray(items) ? items : [];\n  return arr.slice(0, 30).map(i => `${i.id}: ${i.name}`).join(', ');\n};\n\nconst industries = fmt($('Fetch Industries').first().json);\nconst educations = fmt($('Fetch Education Levels').first().json);\nconst jobCats = fmt($('Fetch Job Categories').first().json);\nconst seniorities = fmt($('Fetch Seniorities').first().json);\n\nconst prompt = `Je bent een recruitment-specialist bij Top Match, een professioneel recruitmentbureau in Nederland. Maak van het onderstaande korte vacature-briefje een volledige, aantrekkelijke vacaturetekst.\n\n**Briefje van recruiter:**\n${brief}\n\n**Beschikbare taxonomie-opties (kies het best passende ID):**\nIndustrieën: ${industries}\nOpleidingsniveaus: ${educations}\nFunctiecategorieën: ${jobCats}\nSenioriteitsniveaus: ${seniorities}\n\nGeef je antwoord als JSON met exact deze velden:\n{\n  \"title\": \"functietitel\",\n  \"description\": \"volledige vacaturetekst in HTML-formaat met <h3>, <ul>, <li>, <p> tags\",\n  \"employmentType\": \"permanent|temporary|fixed_term|fixed_term_with_option_for_permanent|freelance|traineeship|internship\",\n  \"yearsOfExperience\": 0,\n  \"workingHours\": {\"from\": 32, \"to\": 40},\n  \"salary\": {\"period\": \"monthly\", \"from\": 0, \"to\": 0, \"currency\": \"EUR\"},\n  \"location\": {\"city\": \"stad\", \"country\": \"NL\", \"allowsRemoteWork\": false},\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"industryId\": \"gekozen-id\",\n  \"educationLevelId\": \"gekozen-id\",\n  \"jobCategoryId\": \"gekozen-id\",\n  \"seniorityId\": \"gekozen-id\"\n}\n\nSchrijf de beschrijving in professioneel, enthousiast Nederlands. Antwoord ALLEEN met geldige JSON.`;\n\nreturn [{json: {prompt, brief}}];"
+        "jsCode": "const brief = $('Vacancy Brief Webhook').first().json.body?.brief || $('Vacancy Brief Webhook').first().json.brief || '';\n\nconst fmt = (items) => {\n  const arr = Array.isArray(items) ? items : [];\n  return arr.slice(0, 30).map(i => `${i.id}: ${i.name}`).join(', ');\n};\n\nconst industries = fmt($('Fetch Industries').first().json);\nconst educations = fmt($('Fetch Education Levels').first().json);\nconst jobCats = fmt($('Fetch Job Categories').first().json);\nconst seniorities = fmt($('Fetch Seniorities').first().json);\n\nconst prompt = `Je bent een recruitment-specialist bij Top Match, een professioneel recruitmentbureau in Nederland. Maak van het onderstaande korte vacature-briefje een volledige, aantrekkelijke vacaturetekst.\n\n**Briefje van recruiter:**\n${brief}\n\n**Beschikbare taxonomie-opties (kies het best passende ID):**\nIndustrie\u00ebn: ${industries}\nOpleidingsniveaus: ${educations}\nFunctiecategorie\u00ebn: ${jobCats}\nSenioriteitsniveaus: ${seniorities}\n\nGeef je antwoord als JSON met exact deze velden:\n{\n  \"title\": \"functietitel\",\n  \"description\": \"volledige vacaturetekst in HTML-formaat met <h3>, <ul>, <li>, <p> tags\",\n  \"employmentType\": \"permanent|temporary|fixed_term|fixed_term_with_option_for_permanent|freelance|traineeship|internship\",\n  \"yearsOfExperience\": 0,\n  \"workingHours\": {\"from\": 32, \"to\": 40},\n  \"salary\": {\"period\": \"monthly\", \"from\": 0, \"to\": 0, \"currency\": \"EUR\"},\n  \"location\": {\"city\": \"stad\", \"country\": \"NL\", \"allowsRemoteWork\": false},\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"industryId\": \"gekozen-id\",\n  \"educationLevelId\": \"gekozen-id\",\n  \"jobCategoryId\": \"gekozen-id\",\n  \"seniorityId\": \"gekozen-id\"\n}\n\nSchrijf de beschrijving in professioneel, enthousiast Nederlands. Antwoord ALLEEN met geldige JSON.`;\n\nreturn [{json: {prompt, brief}}];"
       }
     },
     {
       "id": "http_claude",
       "name": "Claude Generates Vacancy",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
       "position": [
         1050,
         350
       ],
       "parameters": {
-        "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-sonnet-4-20250514"
+        },
+        "messages": {
+          "values": [
             {
-              "name": "x-api-key",
-              "value": "={{ $env.ANTHROPIC_API_KEY }}"
-            },
-            {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
+              "content": "={{ $json.prompt }}",
+              "role": "user"
             }
           ]
         },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 2048,\n  \"messages\": [{\"role\": \"user\", \"content\": {{ JSON.stringify($json.prompt) }}}]\n}",
-        "options": {}
+        "simplify": false,
+        "options": {
+          "maxTokens": 2048
+        }
+      },
+      "credentials": {
+        "anthropicApi": {
+          "id": "",
+          "name": "Anthropic account"
+        }
       }
     },
     {

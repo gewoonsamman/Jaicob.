@@ -1,5 +1,5 @@
 {
-  "name": "Top Match — Lead Enrichment & Outreach",
+  "name": "Top Match \u2014 Lead Enrichment & Outreach",
   "nodes": [
     {
       "id": "webhook_1",
@@ -92,42 +92,44 @@
       ],
       "parameters": {
         "language": "javaScript",
-        "jsCode": "const lead = $('Fetch Lead from Jaicob').first().json;\nconst clients = ($('Fetch All Clients').first().json.data || []);\n\nconst details = lead.applicantDetails || {};\nconst name = `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'Onbekend';\nconst skills = (lead.skills || []).map(s => s.name).join(', ');\nconst experiences = (lead.workExperiences || []).slice(0, 5);\nconst expSummary = experiences.map(e => `${e.position || ''} bij ${e.company || ''}`).join('; ');\nconst educations = (lead.educations || []).slice(0, 3);\nconst eduSummary = educations.map(e => `${e.degree || ''} — ${e.organization || ''}`).join('; ');\n\nconst clientLines = clients.slice(0, 20).map(c => \n  `- ${c.id}: ${c.companyName || ''} (${(c.details?.description || '').substring(0, 100)})`\n).join('\\n');\n\nconst prompt = `Je bent een recruiter bij Top Match, een persoonlijk en professioneel recruitmentbureau in Nederland.\n\nSchrijf een kort, persoonlijk berichtje (3-5 zinnen) in het Nederlands om contact op te nemen met deze lead. Het doel is om hun interesse te wekken zonder te pushy te zijn.\n\n**Lead profiel:**\nNaam: ${name}\nHuidige functie: ${lead.function || 'niet opgegeven'}\nVaardigheden: ${skills || 'niet opgegeven'}\nWerkervaring: ${expSummary || 'niet opgegeven'}\nOpleiding: ${eduSummary || 'niet opgegeven'}\n\n**Onze klanten die mogelijk passen:**\n${clientLines || 'Geen klanten beschikbaar'}\n\nHet bericht moet:\n- Persoonlijk en warm zijn (gebruik voornaam)\n- Verwijzen naar hun specifieke ervaring/vaardigheden\n- Aangeven dat je mogelijk iets interessants hebt\n- Eindigen met een zachte call-to-action\n\nGeef je antwoord als JSON:\n{\n  \"subject\": \"onderwerp voor email\",\n  \"message\": \"het volledige bericht\",\n  \"matching_client_ids\": [\"id1\", \"id2\"],\n  \"matching_client_names\": [\"naam1\", \"naam2\"],\n  \"follow_up_days\": 3\n}`;\n\nreturn [{json: {prompt, lead_id: lead.id || '', lead_name: name, lead_email: details.email || ''}}];"
+        "jsCode": "const lead = $('Fetch Lead from Jaicob').first().json;\nconst clients = ($('Fetch All Clients').first().json.data || []);\n\nconst details = lead.applicantDetails || {};\nconst name = `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'Onbekend';\nconst skills = (lead.skills || []).map(s => s.name).join(', ');\nconst experiences = (lead.workExperiences || []).slice(0, 5);\nconst expSummary = experiences.map(e => `${e.position || ''} bij ${e.company || ''}`).join('; ');\nconst educations = (lead.educations || []).slice(0, 3);\nconst eduSummary = educations.map(e => `${e.degree || ''} \u2014 ${e.organization || ''}`).join('; ');\n\nconst clientLines = clients.slice(0, 20).map(c => \n  `- ${c.id}: ${c.companyName || ''} (${(c.details?.description || '').substring(0, 100)})`\n).join('\\n');\n\nconst prompt = `Je bent een recruiter bij Top Match, een persoonlijk en professioneel recruitmentbureau in Nederland.\n\nSchrijf een kort, persoonlijk berichtje (3-5 zinnen) in het Nederlands om contact op te nemen met deze lead. Het doel is om hun interesse te wekken zonder te pushy te zijn.\n\n**Lead profiel:**\nNaam: ${name}\nHuidige functie: ${lead.function || 'niet opgegeven'}\nVaardigheden: ${skills || 'niet opgegeven'}\nWerkervaring: ${expSummary || 'niet opgegeven'}\nOpleiding: ${eduSummary || 'niet opgegeven'}\n\n**Onze klanten die mogelijk passen:**\n${clientLines || 'Geen klanten beschikbaar'}\n\nHet bericht moet:\n- Persoonlijk en warm zijn (gebruik voornaam)\n- Verwijzen naar hun specifieke ervaring/vaardigheden\n- Aangeven dat je mogelijk iets interessants hebt\n- Eindigen met een zachte call-to-action\n\nGeef je antwoord als JSON:\n{\n  \"subject\": \"onderwerp voor email\",\n  \"message\": \"het volledige bericht\",\n  \"matching_client_ids\": [\"id1\", \"id2\"],\n  \"matching_client_names\": [\"naam1\", \"naam2\"],\n  \"follow_up_days\": 3\n}`;\n\nreturn [{json: {prompt, lead_id: lead.id || '', lead_name: name, lead_email: details.email || ''}}];"
       }
     },
     {
       "id": "http_claude",
       "name": "Claude Generates Outreach",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
       "position": [
         1050,
         350
       ],
       "parameters": {
-        "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-sonnet-4-20250514"
+        },
+        "messages": {
+          "values": [
             {
-              "name": "x-api-key",
-              "value": "={{ $env.ANTHROPIC_API_KEY }}"
-            },
-            {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
+              "content": "={{ $json.prompt }}",
+              "role": "user"
             }
           ]
         },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 1024,\n  \"messages\": [{\"role\": \"user\", \"content\": {{ JSON.stringify($json.prompt) }}}]\n}",
-        "options": {}
+        "simplify": false,
+        "options": {
+          "maxTokens": 1024
+        }
+      },
+      "credentials": {
+        "anthropicApi": {
+          "id": "",
+          "name": "Anthropic account"
+        }
       }
     },
     {

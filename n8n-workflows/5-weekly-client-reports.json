@@ -1,5 +1,5 @@
 {
-  "name": "Top Match — Weekly Client Reports",
+  "name": "Top Match \u2014 Weekly Client Reports",
   "nodes": [
     {
       "id": "schedule_1",
@@ -149,42 +149,37 @@
     {
       "id": "http_claude",
       "name": "Claude Writes Reports",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
       "position": [
         1080,
         400
       ],
       "parameters": {
-        "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-sonnet-4-20250514"
+        },
+        "messages": {
+          "values": [
             {
-              "name": "x-api-key",
-              "value": "={{ $env.ANTHROPIC_API_KEY }}"
-            },
-            {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
+              "content": "={{ $json.prompt }}",
+              "role": "user"
             }
           ]
         },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 512,\n  \"messages\": [{\"role\": \"user\", \"content\": {{ JSON.stringify($json.prompt) }}}]\n}",
+        "simplify": false,
         "options": {
-          "batching": {
-            "batch": {
-              "batchSize": 5,
-              "batchInterval": 1000
-            }
-          }
+          "maxTokens": 512
+        }
+      },
+      "credentials": {
+        "anthropicApi": {
+          "id": "",
+          "name": "Anthropic account"
         }
       }
     },
@@ -199,7 +194,7 @@
       ],
       "parameters": {
         "language": "javaScript",
-        "jsCode": "const items = $input.all();\nconst clientItems = $('Build Per-Client Summaries').all();\nconst statusIcons = { on_track: '🟢', needs_attention: '🟡', urgent: '🔴' };\n\nconst now = new Date();\nlet digest = `📊 *Top Match — Wekelijks Klantenoverzicht*\\n📅 ${now.toLocaleDateString('nl-NL')}\\n${'='.repeat(40)}\\n\\n`;\n\nconst reports = [];\nfor (let i = 0; i < items.length; i++) {\n  const client = clientItems[i]?.json || {};\n  let report;\n  try {\n    const text = items[i].json.content?.[0]?.text || '{}';\n    report = JSON.parse(text);\n  } catch (e) {\n    report = { summary: items[i].json.content?.[0]?.text || 'Geen rapport', status: 'on_track', suggested_actions: [] };\n  }\n\n  const icon = statusIcons[report.status] || '⚪';\n  digest += `${icon} *${client.client_name}*\\n`;\n  digest += `   ${report.summary}\\n`;\n  if (report.suggested_actions && report.suggested_actions.length > 0) {\n    digest += `   Acties:\\n`;\n    for (const action of report.suggested_actions) {\n      digest += `   • ${action}\\n`;\n    }\n  }\n  digest += '\\n';\n\n  reports.push({\n    client_id: client.client_id,\n    client_name: client.client_name,\n    ...report\n  });\n}\n\nreturn [{json: {digest, reports, generated_at: now.toISOString()}}];"
+        "jsCode": "const items = $input.all();\nconst clientItems = $('Build Per-Client Summaries').all();\nconst statusIcons = { on_track: '\ud83d\udfe2', needs_attention: '\ud83d\udfe1', urgent: '\ud83d\udd34' };\n\nconst now = new Date();\nlet digest = `\ud83d\udcca *Top Match \u2014 Wekelijks Klantenoverzicht*\\n\ud83d\udcc5 ${now.toLocaleDateString('nl-NL')}\\n${'='.repeat(40)}\\n\\n`;\n\nconst reports = [];\nfor (let i = 0; i < items.length; i++) {\n  const client = clientItems[i]?.json || {};\n  let report;\n  try {\n    const text = items[i].json.content?.[0]?.text || '{}';\n    report = JSON.parse(text);\n  } catch (e) {\n    report = { summary: items[i].json.content?.[0]?.text || 'Geen rapport', status: 'on_track', suggested_actions: [] };\n  }\n\n  const icon = statusIcons[report.status] || '\u26aa';\n  digest += `${icon} *${client.client_name}*\\n`;\n  digest += `   ${report.summary}\\n`;\n  if (report.suggested_actions && report.suggested_actions.length > 0) {\n    digest += `   Acties:\\n`;\n    for (const action of report.suggested_actions) {\n      digest += `   \u2022 ${action}\\n`;\n    }\n  }\n  digest += '\\n';\n\n  reports.push({\n    client_id: client.client_id,\n    client_name: client.client_name,\n    ...report\n  });\n}\n\nreturn [{json: {digest, reports, generated_at: now.toISOString()}}];"
       }
     },
     {
