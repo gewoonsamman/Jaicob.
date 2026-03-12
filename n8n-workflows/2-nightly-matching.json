@@ -38,7 +38,7 @@
           "parameters": [
             {
               "name": "x-api-key",
-              "value": "={{ $env.JAICOB_API_KEY }}"
+              "value": "7609a0e2-1a27-4833-9fef-5f321fe0eb5a"
             },
             {
               "name": "x-language",
@@ -79,7 +79,7 @@
           "parameters": [
             {
               "name": "x-api-key",
-              "value": "={{ $env.JAICOB_API_KEY }}"
+              "value": "7609a0e2-1a27-4833-9fef-5f321fe0eb5a"
             },
             {
               "name": "x-language",
@@ -222,14 +222,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.GHL_API_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
               "name": "Version",
               "value": "2021-07-28"
             }
@@ -238,7 +230,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $env.GHL_CONTACT_ID }}\",\n  \"message\": \"=$json.digest\"\n}",
-        "options": {}
+        "options": {},
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "highLevelOAuth2Api"
+      },
+      "credentials": {
+        "highLevelOAuth2Api": {
+          "id": "",
+          "name": "HighLevel account"
+        }
       }
     }
   ],
