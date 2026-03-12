@@ -1,5 +1,5 @@
 {
-  "name": "Top Match \u2014 Lead Enrichment & Outreach",
+  "name": "Top Match — Lead Enrichment & Outreach",
   "nodes": [
     {
       "id": "webhook_1",
@@ -92,7 +92,7 @@
       ],
       "parameters": {
         "language": "javaScript",
-        "jsCode": "const lead = $('Fetch Lead from Jaicob').first().json;\nconst clients = ($('Fetch All Clients').first().json.data || []);\n\nconst details = lead.applicantDetails || {};\nconst name = `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'Onbekend';\nconst skills = (lead.skills || []).map(s => s.name).join(', ');\nconst experiences = (lead.workExperiences || []).slice(0, 5);\nconst expSummary = experiences.map(e => `${e.position || ''} bij ${e.company || ''}`).join('; ');\nconst educations = (lead.educations || []).slice(0, 3);\nconst eduSummary = educations.map(e => `${e.degree || ''} \u2014 ${e.organization || ''}`).join('; ');\n\nconst clientLines = clients.slice(0, 20).map(c => \n  `- ${c.id}: ${c.companyName || ''} (${(c.details?.description || '').substring(0, 100)})`\n).join('\\n');\n\nconst prompt = `Je bent een recruiter bij Top Match, een persoonlijk en professioneel recruitmentbureau in Nederland.\n\nSchrijf een kort, persoonlijk berichtje (3-5 zinnen) in het Nederlands om contact op te nemen met deze lead. Het doel is om hun interesse te wekken zonder te pushy te zijn.\n\n**Lead profiel:**\nNaam: ${name}\nHuidige functie: ${lead.function || 'niet opgegeven'}\nVaardigheden: ${skills || 'niet opgegeven'}\nWerkervaring: ${expSummary || 'niet opgegeven'}\nOpleiding: ${eduSummary || 'niet opgegeven'}\n\n**Onze klanten die mogelijk passen:**\n${clientLines || 'Geen klanten beschikbaar'}\n\nHet bericht moet:\n- Persoonlijk en warm zijn (gebruik voornaam)\n- Verwijzen naar hun specifieke ervaring/vaardigheden\n- Aangeven dat je mogelijk iets interessants hebt\n- Eindigen met een zachte call-to-action\n\nGeef je antwoord als JSON:\n{\n  \"subject\": \"onderwerp voor email\",\n  \"message\": \"het volledige bericht\",\n  \"matching_client_ids\": [\"id1\", \"id2\"],\n  \"matching_client_names\": [\"naam1\", \"naam2\"],\n  \"follow_up_days\": 3\n}`;\n\nreturn [{json: {prompt, lead_id: lead.id || '', lead_name: name, lead_email: details.email || ''}}];"
+        "jsCode": "const lead = $('Fetch Lead from Jaicob').first().json;\nconst clients = ($('Fetch All Clients').first().json.data || []);\n\nconst details = lead.applicantDetails || {};\nconst name = `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'Onbekend';\nconst skills = (lead.skills || []).map(s => s.name).join(', ');\nconst experiences = (lead.workExperiences || []).slice(0, 5);\nconst expSummary = experiences.map(e => `${e.position || ''} bij ${e.company || ''}`).join('; ');\nconst educations = (lead.educations || []).slice(0, 3);\nconst eduSummary = educations.map(e => `${e.degree || ''} — ${e.organization || ''}`).join('; ');\n\nconst clientLines = clients.slice(0, 20).map(c => \n  `- ${c.id}: ${c.companyName || ''} (${(c.details?.description || '').substring(0, 100)})`\n).join('\\n');\n\nconst prompt = `Je bent een recruiter bij Top Match, een persoonlijk en professioneel recruitmentbureau in Nederland.\n\nSchrijf een kort, persoonlijk berichtje (3-5 zinnen) in het Nederlands om contact op te nemen met deze lead. Het doel is om hun interesse te wekken zonder te pushy te zijn.\n\n**Lead profiel:**\nNaam: ${name}\nHuidige functie: ${lead.function || 'niet opgegeven'}\nVaardigheden: ${skills || 'niet opgegeven'}\nWerkervaring: ${expSummary || 'niet opgegeven'}\nOpleiding: ${eduSummary || 'niet opgegeven'}\n\n**Onze klanten die mogelijk passen:**\n${clientLines || 'Geen klanten beschikbaar'}\n\nHet bericht moet:\n- Persoonlijk en warm zijn (gebruik voornaam)\n- Verwijzen naar hun specifieke ervaring/vaardigheden\n- Aangeven dat je mogelijk iets interessants hebt\n- Eindigen met een zachte call-to-action\n\nGeef je antwoord als JSON:\n{\n  \"subject\": \"onderwerp voor email\",\n  \"message\": \"het volledige bericht\",\n  \"matching_client_ids\": [\"id1\", \"id2\"],\n  \"matching_client_names\": [\"naam1\", \"naam2\"],\n  \"follow_up_days\": 3\n}`;\n\nreturn [{json: {prompt, lead_id: lead.id || '', lead_name: name, lead_email: details.email || ''}}];"
       }
     },
     {
@@ -127,7 +127,7 @@
       },
       "credentials": {
         "anthropicApi": {
-          "id": "",
+          "id": "j66CYf8R1C5jtddV",
           "name": "Anthropic account"
         }
       }
@@ -195,6 +195,21 @@
         "responseBody": "={{ JSON.stringify({ success: true, outreach: $json }) }}",
         "options": {}
       }
+    },
+    {
+      "id": "merge_wait_all",
+      "name": "Wait for All Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        650,
+        350
+      ],
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 2,
+        "options": {}
+      }
     }
   ],
   "connections": {
@@ -218,7 +233,7 @@
       "main": [
         [
           {
-            "node": "Build Outreach Prompt",
+            "node": "Wait for All Data",
             "type": "main",
             "index": 0
           }
@@ -229,9 +244,9 @@
       "main": [
         [
           {
-            "node": "Build Outreach Prompt",
+            "node": "Wait for All Data",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -273,12 +288,25 @@
           }
         ]
       ]
+    },
+    "Wait for All Data": {
+      "main": [
+        [
+          {
+            "node": "Build Outreach Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1",
     "timezone": "Europe/Amsterdam",
     "saveDataSuccessExecution": "all",
-    "saveDataErrorExecution": "all"
+    "saveDataErrorExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   }
 }

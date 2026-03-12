@@ -1,15 +1,7 @@
 {
-  "name": "Top Match \u2014 Weekly Client Reports",
+  "name": "Top Match — Weekly Client Reports",
   "nodes": [
     {
-      "id": "schedule_1",
-      "name": "Every Monday at 8AM",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        250,
-        400
-      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -19,20 +11,64 @@
             }
           ]
         }
-      }
+      },
+      "id": "schedule_1",
+      "name": "Every Monday at 8AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        400
+      ]
     },
     {
+      "parameters": {
+        "url": "https://api.jaicob.ai/clients/public",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "take",
+              "value": "100"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "7609a0e2-1a27-4833-9fef-5f321fe0eb5a"
+            },
+            {
+              "name": "x-language",
+              "value": "nl"
+            }
+          ]
+        },
+        "options": {}
+      },
       "id": "http_clients",
       "name": "Fetch All Clients",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        500,
-        250
-      ],
+        512,
+        256
+      ]
+    },
+    {
       "parameters": {
-        "method": "GET",
-        "url": "https://api.jaicob.ai/clients/public",
+        "url": "https://api.jaicob.ai/vacancies/public",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "take",
+              "value": "200"
+            }
+          ]
+        },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -46,30 +82,29 @@
             }
           ]
         },
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "take",
-              "value": "100"
-            }
-          ]
-        },
         "options": {}
-      }
-    },
-    {
+      },
       "id": "http_vacancies",
       "name": "Fetch All Vacancies",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        500,
-        400
-      ],
+        512,
+        432
+      ]
+    },
+    {
       "parameters": {
-        "method": "GET",
-        "url": "https://api.jaicob.ai/vacancies/public",
+        "url": "https://api.jaicob.ai/applications/public",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "take",
+              "value": "200"
+            }
+          ]
+        },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -83,56 +118,21 @@
             }
           ]
         },
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "take",
-              "value": "100"
-            }
-          ]
-        },
         "options": {}
-      }
-    },
-    {
+      },
       "id": "http_applications",
       "name": "Fetch All Applications",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        500,
-        550
-      ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://api.jaicob.ai/applications/public",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-api-key",
-              "value": "7609a0e2-1a27-4833-9fef-5f321fe0eb5a"
-            },
-            {
-              "name": "x-language",
-              "value": "nl"
-            }
-          ]
-        },
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "take",
-              "value": "100"
-            }
-          ]
-        },
-        "options": {}
-      }
+        512,
+        624
+      ]
     },
     {
+      "parameters": {
+        "jsCode": "const clients = ($('Fetch All Clients').first().json.data || []);\nconst vacancies = ($('Fetch All Vacancies').first().json.data || []);\nconst applications = ($('Fetch All Applications').first().json.data || []);\n\nconst weekAgo = new Date();\nweekAgo.setDate(weekAgo.getDate() - 7);\n\nconst results = [];\nfor (const client of clients) {\n  const clientId = client.id;\n  const clientVacancies = vacancies.filter(v => v.clientId === clientId);\n  const vacancyTitles = clientVacancies.map(v => v.title || '').join(', ');\n  const clientApps = applications.filter(a => a.clientId === clientId);\n  const newApps = clientApps.filter(a => {\n    try { return new Date(a.createdAt) >= weekAgo; } catch(e) { return false; }\n  });\n\n  results.push({\n    json: {\n      client_id: clientId,\n      client_name: client.companyName || 'Onbekend',\n      active_vacancies: clientVacancies.length,\n      vacancy_titles: vacancyTitles || 'geen',\n      total_applications: clientApps.length,\n      new_applications: newApps.length,\n      prompt: `Je bent de account manager bij Top Match. Schrijf een kort weekrapport (3-5 zinnen, professioneel Nederlands) voor de klant.\\n\\nKlant: ${client.companyName}\\nActieve vacatures: ${clientVacancies.length}\\nVacature-titels: ${vacancyTitles || 'geen'}\\nNieuwe sollicitaties deze week: ${newApps.length}\\nTotaal sollicitaties: ${clientApps.length}\\n\\nAls er weinig activiteit is, stel dan proactief een actie voor.\\n\\nAntwoord als JSON:\\n{\\n  \"summary\": \"het rapport\",\\n  \"status\": \"on_track|needs_attention|urgent\",\\n  \"suggested_actions\": [\"actie 1\", \"actie 2\"]\\n}`\n    }\n  });\n}\n\nreturn results.length > 0 ? results : [{json: {error: 'Geen klanten gevonden'}}];"
+      },
       "id": "code_per_client",
       "name": "Build Per-Client Summaries",
       "type": "n8n-nodes-base.code",
@@ -140,24 +140,10 @@
       "position": [
         800,
         400
-      ],
-      "parameters": {
-        "language": "javaScript",
-        "jsCode": "const clients = ($('Fetch All Clients').first().json.data || []);\nconst vacancies = ($('Fetch All Vacancies').first().json.data || []);\nconst applications = ($('Fetch All Applications').first().json.data || []);\n\nconst weekAgo = new Date();\nweekAgo.setDate(weekAgo.getDate() - 7);\n\nconst results = [];\nfor (const client of clients) {\n  const clientId = client.id;\n  const clientVacancies = vacancies.filter(v => v.clientId === clientId);\n  const vacancyTitles = clientVacancies.map(v => v.title || '').join(', ');\n  const clientApps = applications.filter(a => a.clientId === clientId);\n  const newApps = clientApps.filter(a => {\n    try { return new Date(a.createdAt) >= weekAgo; } catch(e) { return false; }\n  });\n\n  results.push({\n    json: {\n      client_id: clientId,\n      client_name: client.companyName || 'Onbekend',\n      active_vacancies: clientVacancies.length,\n      vacancy_titles: vacancyTitles || 'geen',\n      total_applications: clientApps.length,\n      new_applications: newApps.length,\n      prompt: `Je bent de account manager bij Top Match. Schrijf een kort weekrapport (3-5 zinnen, professioneel Nederlands) voor de klant.\\n\\nKlant: ${client.companyName}\\nActieve vacatures: ${clientVacancies.length}\\nVacature-titels: ${vacancyTitles || 'geen'}\\nNieuwe sollicitaties deze week: ${newApps.length}\\nTotaal sollicitaties: ${clientApps.length}\\n\\nAls er weinig activiteit is, stel dan proactief een actie voor.\\n\\nAntwoord als JSON:\\n{\\n  \"summary\": \"het rapport\",\\n  \"status\": \"on_track|needs_attention|urgent\",\\n  \"suggested_actions\": [\"actie 1\", \"actie 2\"]\\n}`\n    }\n  });\n}\n\nreturn results.length > 0 ? results : [{json: {error: 'Geen klanten gevonden'}}];"
-      }
+      ]
     },
     {
-      "id": "http_claude",
-      "name": "Claude Writes Reports",
-      "type": "@n8n/n8n-nodes-langchain.anthropic",
-      "typeVersion": 1,
-      "position": [
-        1080,
-        400
-      ],
       "parameters": {
-        "resource": "text",
-        "operation": "message",
         "modelId": {
           "__rl": true,
           "mode": "id",
@@ -166,8 +152,7 @@
         "messages": {
           "values": [
             {
-              "content": "={{ $json.prompt }}",
-              "role": "user"
+              "content": "={{ $json.prompt }}"
             }
           ]
         },
@@ -176,39 +161,40 @@
           "maxTokens": 512
         }
       },
+      "id": "http_claude",
+      "name": "Claude Writes Reports",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        400
+      ],
       "credentials": {
         "anthropicApi": {
-          "id": "",
+          "id": "j66CYf8R1C5jtddV",
           "name": "Anthropic account"
         }
       }
     },
     {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst clientItems = $('Build Per-Client Summaries').all();\nconst statusIcons = { on_track: '🟢', needs_attention: '🟡', urgent: '🔴' };\n\nconst now = new Date();\nlet digest = `📊 *Top Match — Wekelijks Klantenoverzicht*\\n📅 ${now.toLocaleDateString('nl-NL')}\\n${'='.repeat(40)}\\n\\n`;\n\nconst reports = [];\nfor (let i = 0; i < items.length; i++) {\n  const client = clientItems[i]?.json || {};\n  let report;\n  try {\n    const text = items[i].json.content?.[0]?.text || '{}';\n    report = JSON.parse(text);\n  } catch (e) {\n    report = { summary: items[i].json.content?.[0]?.text || 'Geen rapport', status: 'on_track', suggested_actions: [] };\n  }\n\n  const icon = statusIcons[report.status] || '⚪';\n  digest += `${icon} *${client.client_name}*\\n`;\n  digest += `   ${report.summary}\\n`;\n  if (report.suggested_actions && report.suggested_actions.length > 0) {\n    digest += `   Acties:\\n`;\n    for (const action of report.suggested_actions) {\n      digest += `   • ${action}\\n`;\n    }\n  }\n  digest += '\\n';\n\n  reports.push({\n    client_id: client.client_id,\n    client_name: client.client_name,\n    ...report\n  });\n}\n\nreturn [{json: {digest, reports, generated_at: now.toISOString()}}];"
+      },
       "id": "code_digest",
       "name": "Build Weekly Digest",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1350,
+        1360,
         400
-      ],
-      "parameters": {
-        "language": "javaScript",
-        "jsCode": "const items = $input.all();\nconst clientItems = $('Build Per-Client Summaries').all();\nconst statusIcons = { on_track: '\ud83d\udfe2', needs_attention: '\ud83d\udfe1', urgent: '\ud83d\udd34' };\n\nconst now = new Date();\nlet digest = `\ud83d\udcca *Top Match \u2014 Wekelijks Klantenoverzicht*\\n\ud83d\udcc5 ${now.toLocaleDateString('nl-NL')}\\n${'='.repeat(40)}\\n\\n`;\n\nconst reports = [];\nfor (let i = 0; i < items.length; i++) {\n  const client = clientItems[i]?.json || {};\n  let report;\n  try {\n    const text = items[i].json.content?.[0]?.text || '{}';\n    report = JSON.parse(text);\n  } catch (e) {\n    report = { summary: items[i].json.content?.[0]?.text || 'Geen rapport', status: 'on_track', suggested_actions: [] };\n  }\n\n  const icon = statusIcons[report.status] || '\u26aa';\n  digest += `${icon} *${client.client_name}*\\n`;\n  digest += `   ${report.summary}\\n`;\n  if (report.suggested_actions && report.suggested_actions.length > 0) {\n    digest += `   Acties:\\n`;\n    for (const action of report.suggested_actions) {\n      digest += `   \u2022 ${action}\\n`;\n    }\n  }\n  digest += '\\n';\n\n  reports.push({\n    client_id: client.client_id,\n    client_name: client.client_name,\n    ...report\n  });\n}\n\nreturn [{json: {digest, reports, generated_at: now.toISOString()}}];"
-      }
+      ]
     },
     {
-      "id": "slack_report",
-      "name": "SMS Weekrapport via GoHighLevel",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1620,
-        400
-      ],
       "parameters": {
         "method": "POST",
         "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "highLevelOAuth2Api",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -221,15 +207,36 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $env.GHL_CONTACT_ID }}\",\n  \"message\": \"=$json.digest\"\n}",
-        "options": {},
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "highLevelOAuth2Api"
+        "options": {}
       },
+      "id": "slack_report",
+      "name": "SMS Weekrapport via GoHighLevel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1632,
+        400
+      ],
       "credentials": {
         "highLevelOAuth2Api": {
           "id": "",
           "name": "HighLevel account"
         }
+      }
+    },
+    {
+      "id": "merge_wait_all",
+      "name": "Wait for All Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        700,
+        400
+      ],
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 3,
+        "options": {}
       }
     }
   ],
@@ -259,7 +266,7 @@
       "main": [
         [
           {
-            "node": "Build Per-Client Summaries",
+            "node": "Wait for All Data",
             "type": "main",
             "index": 0
           }
@@ -270,9 +277,9 @@
       "main": [
         [
           {
-            "node": "Build Per-Client Summaries",
+            "node": "Wait for All Data",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -281,9 +288,9 @@
       "main": [
         [
           {
-            "node": "Build Per-Client Summaries",
+            "node": "Wait for All Data",
             "type": "main",
-            "index": 0
+            "index": 2
           }
         ]
       ]
@@ -320,12 +327,25 @@
           }
         ]
       ]
+    },
+    "Wait for All Data": {
+      "main": [
+        [
+          {
+            "node": "Build Per-Client Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1",
     "timezone": "Europe/Amsterdam",
     "saveDataSuccessExecution": "all",
-    "saveDataErrorExecution": "all"
+    "saveDataErrorExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   }
 }

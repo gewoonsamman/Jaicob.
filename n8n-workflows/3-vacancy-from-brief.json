@@ -1,5 +1,5 @@
 {
-  "name": "Top Match \u2014 Vacancy Creation from Brief",
+  "name": "Top Match — Vacancy Creation from Brief",
   "nodes": [
     {
       "id": "webhook_1",
@@ -123,7 +123,7 @@
       ],
       "parameters": {
         "language": "javaScript",
-        "jsCode": "const brief = $('Vacancy Brief Webhook').first().json.body?.brief || $('Vacancy Brief Webhook').first().json.brief || '';\n\nconst fmt = (items) => {\n  const arr = Array.isArray(items) ? items : [];\n  return arr.slice(0, 30).map(i => `${i.id}: ${i.name}`).join(', ');\n};\n\nconst industries = fmt($('Fetch Industries').first().json);\nconst educations = fmt($('Fetch Education Levels').first().json);\nconst jobCats = fmt($('Fetch Job Categories').first().json);\nconst seniorities = fmt($('Fetch Seniorities').first().json);\n\nconst prompt = `Je bent een recruitment-specialist bij Top Match, een professioneel recruitmentbureau in Nederland. Maak van het onderstaande korte vacature-briefje een volledige, aantrekkelijke vacaturetekst.\n\n**Briefje van recruiter:**\n${brief}\n\n**Beschikbare taxonomie-opties (kies het best passende ID):**\nIndustrie\u00ebn: ${industries}\nOpleidingsniveaus: ${educations}\nFunctiecategorie\u00ebn: ${jobCats}\nSenioriteitsniveaus: ${seniorities}\n\nGeef je antwoord als JSON met exact deze velden:\n{\n  \"title\": \"functietitel\",\n  \"description\": \"volledige vacaturetekst in HTML-formaat met <h3>, <ul>, <li>, <p> tags\",\n  \"employmentType\": \"permanent|temporary|fixed_term|fixed_term_with_option_for_permanent|freelance|traineeship|internship\",\n  \"yearsOfExperience\": 0,\n  \"workingHours\": {\"from\": 32, \"to\": 40},\n  \"salary\": {\"period\": \"monthly\", \"from\": 0, \"to\": 0, \"currency\": \"EUR\"},\n  \"location\": {\"city\": \"stad\", \"country\": \"NL\", \"allowsRemoteWork\": false},\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"industryId\": \"gekozen-id\",\n  \"educationLevelId\": \"gekozen-id\",\n  \"jobCategoryId\": \"gekozen-id\",\n  \"seniorityId\": \"gekozen-id\"\n}\n\nSchrijf de beschrijving in professioneel, enthousiast Nederlands. Antwoord ALLEEN met geldige JSON.`;\n\nreturn [{json: {prompt, brief}}];"
+        "jsCode": "const brief = $('Vacancy Brief Webhook').first().json.body?.brief || $('Vacancy Brief Webhook').first().json.brief || '';\n\nconst fmt = (items) => {\n  const arr = Array.isArray(items) ? items : [];\n  return arr.slice(0, 30).map(i => `${i.id}: ${i.name}`).join(', ');\n};\n\nconst industries = fmt($('Fetch Industries').first().json);\nconst educations = fmt($('Fetch Education Levels').first().json);\nconst jobCats = fmt($('Fetch Job Categories').first().json);\nconst seniorities = fmt($('Fetch Seniorities').first().json);\n\nconst prompt = `Je bent een recruitment-specialist bij Top Match, een professioneel recruitmentbureau in Nederland. Maak van het onderstaande korte vacature-briefje een volledige, aantrekkelijke vacaturetekst.\n\n**Briefje van recruiter:**\n${brief}\n\n**Beschikbare taxonomie-opties (kies het best passende ID):**\nIndustrieën: ${industries}\nOpleidingsniveaus: ${educations}\nFunctiecategorieën: ${jobCats}\nSenioriteitsniveaus: ${seniorities}\n\nGeef je antwoord als JSON met exact deze velden:\n{\n  \"title\": \"functietitel\",\n  \"description\": \"volledige vacaturetekst in HTML-formaat met <h3>, <ul>, <li>, <p> tags\",\n  \"employmentType\": \"permanent|temporary|fixed_term|fixed_term_with_option_for_permanent|freelance|traineeship|internship\",\n  \"yearsOfExperience\": 0,\n  \"workingHours\": {\"from\": 32, \"to\": 40},\n  \"salary\": {\"period\": \"monthly\", \"from\": 0, \"to\": 0, \"currency\": \"EUR\"},\n  \"location\": {\"city\": \"stad\", \"country\": \"NL\", \"allowsRemoteWork\": false},\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"industryId\": \"gekozen-id\",\n  \"educationLevelId\": \"gekozen-id\",\n  \"jobCategoryId\": \"gekozen-id\",\n  \"seniorityId\": \"gekozen-id\"\n}\n\nSchrijf de beschrijving in professioneel, enthousiast Nederlands. Antwoord ALLEEN met geldige JSON.`;\n\nreturn [{json: {prompt, brief}}];"
       }
     },
     {
@@ -158,7 +158,7 @@
       },
       "credentials": {
         "anthropicApi": {
-          "id": "",
+          "id": "j66CYf8R1C5jtddV",
           "name": "Anthropic account"
         }
       }
@@ -257,6 +257,21 @@
         "responseBody": "={{ JSON.stringify({ success: true, vacancy_id: $('Publish to Jaicob').first().json.id, vacancy: $('Parse Vacancy JSON').first().json }) }}",
         "options": {}
       }
+    },
+    {
+      "id": "merge_wait_all",
+      "name": "Wait for All Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        700,
+        350
+      ],
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 4,
+        "options": {}
+      }
     }
   ],
   "connections": {
@@ -290,7 +305,7 @@
       "main": [
         [
           {
-            "node": "Build Vacancy Prompt",
+            "node": "Wait for All Data",
             "type": "main",
             "index": 0
           }
@@ -301,9 +316,9 @@
       "main": [
         [
           {
-            "node": "Build Vacancy Prompt",
+            "node": "Wait for All Data",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -312,9 +327,9 @@
       "main": [
         [
           {
-            "node": "Build Vacancy Prompt",
+            "node": "Wait for All Data",
             "type": "main",
-            "index": 0
+            "index": 2
           }
         ]
       ]
@@ -323,9 +338,9 @@
       "main": [
         [
           {
-            "node": "Build Vacancy Prompt",
+            "node": "Wait for All Data",
             "type": "main",
-            "index": 0
+            "index": 3
           }
         ]
       ]
@@ -378,12 +393,25 @@
           }
         ]
       ]
+    },
+    "Wait for All Data": {
+      "main": [
+        [
+          {
+            "node": "Build Vacancy Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1",
     "timezone": "Europe/Amsterdam",
     "saveDataSuccessExecution": "all",
-    "saveDataErrorExecution": "all"
+    "saveDataErrorExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   }
 }
